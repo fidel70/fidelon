@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Space Shooter</title>
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: #000;
+    }
+
+    canvas {
+        display: block;
+        margin: auto;
+        background-color: #000;
+    }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas" width="800" height="600"></canvas>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const ws = new WebSocket('ws://localhost:8080');
+
+    const player = {
+        x: canvas.width / 2,
+        y: canvas.height - 50,
+        width: 50,
+        height: 50,
+        color: "#00FF00",
+        speed: 5
+    };
+
+    function drawPlayer() {
+        ctx.fillStyle = player.color;
+        ctx.fillRect(player.x, player.y, player.width, player.height);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        drawPlayer();
+
+        requestAnimationFrame(draw);
+    }
+
+    function mouseMoveHandler(event) {
+        const relativeX = event.clientX - canvas.offsetLeft;
+        if (relativeX > 0 && relativeX < canvas.width) {
+            player.x = relativeX - player.width / 2;
+            // Enviar la posición del jugador al servidor
+            ws.send(JSON.stringify({ x: player.x, y: player.y }));
+        }
+    }
+
+    ws.onmessage = function(event) {
+        // Recibir la posición del otro jugador desde el servidor
+        const otherPlayer = JSON.parse(event.data);
+        // Dibujar al otro jugador
+        ctx.fillStyle = otherPlayer.color;
+        ctx.fillRect(otherPlayer.x, otherPlayer.y, otherPlayer.width, otherPlayer.height);
+    }
+
+    document.addEventListener("mousemove", mouseMoveHandler, false);
+
+    draw();
+</script>
+</body>
+</html>

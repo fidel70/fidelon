@@ -1,74 +1,123 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Space Shooter</title>
+<title>Nave Espacial Triangular - Asteroids</title>
 <style>
-    body {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        background-color: #000;
-    }
-
     canvas {
-        display: block;
-        margin: auto;
-        background-color: #000;
+        background-color: #000000;
     }
 </style>
 </head>
 <body>
-<canvas id="gameCanvas" width="800" height="600"></canvas>
-
+<canvas id="canvas" width="600" height="400"></canvas>
 <script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
-    const ws = new WebSocket('ws://localhost:8080');
+    // Variables para el lienzo y contexto
+    var canvas = document.getElementById("canvas");
+    var ctx = canvas.getContext("2d");
 
-    const player = {
+    // Variables de la nave
+    var ship = {
         x: canvas.width / 2,
-        y: canvas.height - 50,
-        width: 50,
-        height: 50,
-        color: "#00FF00",
-        speed: 5
+        y: canvas.height / 2,
+        size: 20,
+        angle: -Math.PI / 2, // Apuntando hacia arriba al principio
+        rotationSpeed: 0.1,
+        acceleration: 0.1,
+        friction: 0.99, // Factor de fricción para simular el movimiento en el espacio
+        thrust: false,
+        speedX: -1,
+        speedY: 0
     };
 
-    function drawPlayer() {
-        ctx.fillStyle = player.color;
-        ctx.fillRect(player.x, player.y, player.width, player.height);
+    // Función para dibujar la nave
+    function drawShip() {
+        ctx.save();
+        ctx.translate(ship.x, ship.y);
+        ctx.rotate(ship.angle);
+        ctx.beginPath();
+        ctx.moveTo(0, -ship.size);
+        ctx.lineTo(ship.size, ship.size);
+        ctx.lineTo(-ship.size, ship.size);
+        ctx.closePath();
+        ctx.strokeStyle = "#ffffff";
+        ctx.stroke();
+        ctx.restore();
     }
 
-    function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Función para actualizar la posición de la nave
+    function updateShip() {
+        // Aplicar fricción
+        ship.speedX *= ship.friction;
+        ship.speedY *= ship.friction;
 
-        drawPlayer();
+        // Aplicar movimiento
+        if (ship.thrust) {
+            ship.speedX += Math.sin(ship.angle) * ship.acceleration;
+            ship.speedY -= Math.cos(ship.angle) * ship.acceleration;
+        }
 
-        requestAnimationFrame(draw);
-    }
+        ship.x += ship.speedX;
+        ship.y += ship.speedY;
 
-    function mouseMoveHandler(event) {
-        const relativeX = event.clientX - canvas.offsetLeft;
-        if (relativeX > 0 && relativeX < canvas.width) {
-            player.x = relativeX - player.width / 2;
-            // Enviar la posición del jugador al servidor
-            ws.send(JSON.stringify({ x: player.x, y: player.y }));
+        // Mantener la nave dentro del lienzo
+        if (ship.x > canvas.width + ship.size) {
+            ship.x = -ship.size;
+        } else if (ship.x < -ship.size) {
+            ship.x = canvas.width + ship.size;
+        }
+
+        if (ship.y > canvas.height + ship.size) {
+            ship.y = -ship.size;
+        } else if (ship.y < -ship.size) {
+            ship.y = canvas.height + ship.size;
         }
     }
 
-    ws.onmessage = function(event) {
-        // Recibir la posición del otro jugador desde el servidor
-        const otherPlayer = JSON.parse(event.data);
-        // Dibujar al otro jugador
-        ctx.fillStyle = otherPlayer.color;
-        ctx.fillRect(otherPlayer.x, otherPlayer.y, otherPlayer.width, otherPlayer.height);
+    // Función para dibujar el lienzo
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawShip();
     }
 
-    document.addEventListener("mousemove", mouseMoveHandler, false);
+    // Función para actualizar el juego
+    function update() {
+        updateShip();
+    }
 
-    draw();
+    // Función de bucle del juego
+    function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+    }
+
+    // Event listeners para los controles de teclado
+    document.addEventListener("keydown", function(event) {
+        switch(event.keyCode) {
+            case 37: // Flecha izquierda
+                ship.angle -= ship.rotationSpeed;
+                break;
+            case 38: // Flecha arriba
+                ship.thrust = true;
+                break;
+            case 39: // Flecha derecha
+                ship.angle += ship.rotationSpeed;
+                break;
+        }
+    });
+
+    document.addEventListener("keyup", function(event) {
+        switch(event.keyCode) {
+            case 38: // Flecha arriba
+                ship.thrust = false;
+                break;
+        }
+    });
+
+    // Iniciar el bucle del juego
+    loop();
 </script>
 </body>
 </html>
